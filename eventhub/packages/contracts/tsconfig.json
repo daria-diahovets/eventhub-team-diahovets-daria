@@ -1,0 +1,12 @@
+{
+  // Пакет лише з типами: нічого не емітимо, tsc використовується
+  // для перевірки. Спільна база розширюється відносним шляхом,
+  // як і в apps/web.
+  "extends": "../config/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

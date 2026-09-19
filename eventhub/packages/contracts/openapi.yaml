@@ -1,0 +1,210 @@
+openapi: 3.1.0
+
+info:
+  title: EventHub API
+  version: 0.1.0
+  description: Портал продажу квитків на події
+
+servers:
+  - url: http://localhost:4010
+    description: Мок-сервер Prism
+  - url: http://localhost:3000
+    description: Локальний api-gateway
+
+paths:
+  /events:
+    get:
+      operationId: listEvents
+      summary: Список подій із курсорною пагінацією
+      tags: [catalog]
+      parameters:
+        - name: city
+          in: query
+          required: false
+          schema:
+            type: string
+            examples: [Вінниця]
+        - name: category
+          in: query
+          required: false
+          description: Категорія події
+          schema:
+            type: string
+            examples: [concert]
+        - name: from
+          in: query
+          required: false
+          description: Показати події, що починаються не раніше цієї дати
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          description: Показати події, що починаються не пізніше цієї дати
+          schema: { type: string, format: date }
+        - name: cursor
+          in: query
+          required: false
+          description: Непрозорий курсор із попередньої відповіді
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: Сторінка подій
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventPage"
+              examples:
+                filled:
+                  summary: Сторінка з подіями
+                  value:
+                    items:
+                      - id: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                        title: Симфонічний вечір
+                        category: concert
+                        startsAt: "2026-10-12T19:00:00Z"
+                        endsAt: "2026-10-12T21:30:00Z"
+                        venue:
+                          id: 018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00
+                          name: Філармонія
+                          city: Вінниця
+                        minPrice: { amount: 25000, currency: UAH }
+                        availableSeats: 143
+                      - id: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0
+                        title: Джазовий квартет
+                        category: concert
+                        startsAt: "2026-10-19T20:00:00Z"
+                        venue:
+                          id: 018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e01
+                          name: Клуб «Підвал»
+                          city: Вінниця
+                        minPrice: { amount: 18000, currency: UAH }
+                        availableSeats: 12
+                    nextCursor: "MjAyNi0xMC0xOVQyMDowMDowMFo"
+                empty:
+                  summary: Порожній каталог
+                  value:
+                    items: []
+                    nextCursor: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /events/{eventId}:
+    get:
+      operationId: getEvent
+      summary: Одна подія
+      tags: [catalog]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Подія
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+              examples:
+                default:
+                  value:
+                    id: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    title: Симфонічний вечір
+                    description: Програма з творів Лисенка та Дворжака
+                    category: concert
+                    imageUrl: https://example.com/images/symphony-evening.jpg
+                    startsAt: "2026-10-12T19:00:00Z"
+                    endsAt: "2026-10-12T21:30:00Z"
+                    venue:
+                      id: 018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00
+                      name: Філармонія
+                      city: Вінниця
+                    minPrice: { amount: 25000, currency: UAH }
+                    availableSeats: 143
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    Event:
+      type: object
+      required: [id, title, category, startsAt, venue, minPrice, availableSeats]
+      properties:
+        id:          { type: string, format: uuid }
+        title:       { type: string }
+        description: { type: string }
+        category:    { type: string }
+        imageUrl:    { type: string, format: uri }
+        startsAt:    { type: string, format: date-time }
+        endsAt:      { type: string, format: date-time }
+        venue:       { $ref: "#/components/schemas/VenueSummary" }
+        minPrice:    { $ref: "#/components/schemas/Money" }
+        availableSeats: { type: integer, minimum: 0 }
+
+    VenueSummary:
+      type: object
+      required: [id, name, city]
+      properties:
+        id:   { type: string, format: uuid }
+        name: { type: string }
+        city: { type: string }
+
+    Money:
+      type: object
+      required: [amount, currency]
+      description: Сума в мінімальних одиницях валюти (копійках)
+      properties:
+        amount:   { type: integer }
+        currency: { type: string, enum: [UAH] }
+
+    EventPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Event" }
+        nextCursor:
+          type: [string, "null"]
+          description: Курсор наступної сторінки; null — сторінок більше немає
+
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      required: [type, title, status]
+      properties:
+        type:     { type: string }
+        title:    { type: string }
+        status:   { type: integer }
+        detail:   { type: string }
+        instance: { type: string }
+
+  responses:
+    BadRequest:
+      description: Некоректні параметри запиту
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            invalidLimit:
+              value:
+                type: /errors/invalid-query
+                title: Некоректний параметр запиту
+                status: 400
+                detail: "Параметр limit має бути в межах 1..50"
+
+    NotFound:
+      description: Ресурс не знайдено
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            eventNotFound:
+              value:
+                type: /errors/not-found
+                title: Подію не знайдено
+                status: 404
