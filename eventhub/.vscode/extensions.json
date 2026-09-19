@@ -1,0 +1,22 @@
+{
+  // VS Code запропонує встановити ці розширення при відкритті проєкту.
+  // Список поповнюватиметься: Prisma — тиждень 3, Tailwind — тиждень 4,
+  // Docker — тиждень 12.
+  "recommendations": [
+    // Лінтер і форматувальник — узгоджені з конфігами в репозиторії
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // Валідація OpenAPI прямо в редакторі: підсвічує помилки в openapi.yaml
+    // без переходу в Swagger Editor
+    "42crunch.vscode-openapi",
+
+    // Підтримка YAML: автодоповнення, згортання, перевірка відступів
+    "redhat.vscode-yaml"
+  ],
+
+  "unwantedRecommendations": [
+    // Конфліктує з ESLint: два форматувальники правлять один файл по-різному
+    "hookyqr.beautify"
+  ]
+}
