@@ -65,6 +65,7 @@ paths:
                       - id: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
                         title: Симфонічний вечір
                         category: concert
+                        status: scheduled
                         startsAt: "2026-10-12T19:00:00Z"
                         endsAt: "2026-10-12T21:30:00Z"
                         venue:
@@ -76,6 +77,7 @@ paths:
                       - id: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0
                         title: Джазовий квартет
                         category: concert
+                        status: scheduled
                         startsAt: "2026-10-19T20:00:00Z"
                         venue:
                           id: 018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e01
@@ -116,6 +118,7 @@ paths:
                     title: Симфонічний вечір
                     description: Програма з творів Лисенка та Дворжака
                     category: concert
+                    status: scheduled
                     imageUrl: https://example.com/images/symphony-evening.jpg
                     startsAt: "2026-10-12T19:00:00Z"
                     endsAt: "2026-10-12T21:30:00Z"
@@ -128,17 +131,145 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Створити замовлення на квитки
+      description: >-
+        Оплати ще немає (див. домашнє завдання ЛР2): замовлення одразу
+        переходить у статус confirmed, місця резервуються в момент створення.
+      tags: [orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: >-
+            Замовлення створено. cancellationToken повертається лише цього
+            разу - збережіть його, він потрібен для скасування.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateOrderResponse"
+              examples:
+                default:
+                  value:
+                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    quantity: 2
+                    status: confirmed
+                    totalPrice: { amount: 50000, currency: UAH }
+                    createdAt: "2026-10-03T12:00:00Z"
+                    cancellationToken: 7f9c3b2a-1d4e-4a6b-8c2d-5e6f7a8b9c0d
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/SeatsUnavailable"
+        "410":
+          $ref: "#/components/responses/EventGone"
+
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      summary: Переглянути замовлення
+      description: >-
+        orderId - непрозоре посилання з підтвердження замовлення. Самого
+        знання orderId достатньо для перегляду; cancellationToken потрібен
+        лише для скасування (крок 8.3 методички, принцип найменших прав).
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Замовлення
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              examples:
+                default:
+                  value:
+                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    quantity: 2
+                    status: confirmed
+                    totalPrice: { amount: 50000, currency: UAH }
+                    createdAt: "2026-10-03T12:00:00Z"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{orderId}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: Скасувати замовлення
+      description: >-
+        Повторний виклик на вже скасованому замовленні - безпечна (ідемпотентна)
+        операція: повертає 200 із тим самим станом, а не помилку. Скасування,
+        на відміну від створення, не має побічного ефекту, яким можна
+        "нашкодити" повторно.
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelOrderRequest"
+      responses:
+        "200":
+          description: Замовлення скасовано (або вже було скасоване раніше)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              examples:
+                default:
+                  value:
+                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    quantity: 2
+                    status: cancelled
+                    totalPrice: { amount: 50000, currency: UAH }
+                    createdAt: "2026-10-03T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: >-
+            Замовлення не знайдено АБО cancellationToken не збігається.
+            Навмисно той самий код і те саме тіло в обох випадках: якби
+            невірний токен повертав 403, а чужий orderId - 404, зловмисник
+            зміг би перебором дізнатись, які orderId взагалі існують.
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     Event:
       type: object
-      required: [id, title, category, startsAt, venue, minPrice, availableSeats]
+      required: [id, title, category, status, startsAt, venue, minPrice, availableSeats]
       properties:
         id:          { type: string, format: uuid }
         title:       { type: string }
         description: { type: string }
         category:    { type: string }
         imageUrl:    { type: string, format: uri }
+        status:
+          type: string
+          enum: [scheduled, cancelled]
+          description: >-
+            scheduled - подія відбудеться; cancelled - організатор скасував
+            подію, нові замовлення на неї неможливі (див. POST /orders, 410).
         startsAt:    { type: string, format: date-time }
         endsAt:      { type: string, format: date-time }
         venue:       { $ref: "#/components/schemas/VenueSummary" }
@@ -171,6 +302,44 @@ components:
         nextCursor:
           type: [string, "null"]
           description: Курсор наступної сторінки; null — сторінок більше немає
+
+    Order:
+      type: object
+      required: [id, eventId, quantity, status, totalPrice, createdAt]
+      properties:
+        id:        { type: string, format: uuid }
+        eventId:   { type: string, format: uuid }
+        quantity:  { type: integer, minimum: 1 }
+        status:
+          type: string
+          enum: [confirmed, cancelled]
+        totalPrice: { $ref: "#/components/schemas/Money" }
+        createdAt:  { type: string, format: date-time }
+
+    CreateOrderRequest:
+      type: object
+      required: [eventId, quantity]
+      properties:
+        eventId:  { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1, maximum: 10 }
+
+    CreateOrderResponse:
+      description: >-
+        Order плюс cancellationToken - цей секрет сервер показує лише
+        один раз, у відповіді на створення. GET /orders/{orderId} його
+        більше не повертає.
+      allOf:
+        - $ref: "#/components/schemas/Order"
+        - type: object
+          required: [cancellationToken]
+          properties:
+            cancellationToken: { type: string }
+
+    CancelOrderRequest:
+      type: object
+      required: [cancellationToken]
+      properties:
+        cancellationToken: { type: string }
 
     Problem:
       type: object
@@ -208,3 +377,43 @@ components:
                 type: /errors/not-found
                 title: Подію не знайдено
                 status: 404
+            orderNotFound:
+              value:
+                type: /errors/not-found
+                title: Замовлення не знайдено
+                status: 404
+                detail: >-
+                  Замовлення з таким id не існує, або наданий
+                  cancellationToken йому не відповідає
+
+    SeatsUnavailable:
+      description: >-
+        Запитана кількість місць перевищує те, що лишилось вільним на
+        момент запису. Тимчасовий стан: 409, а не 410 - за хвилину хтось
+        може скасувати свою бронь, і такий самий (або менший) запит пройде.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            seatsUnavailable:
+              value:
+                type: /errors/seats-unavailable
+                title: Недостатньо вільних місць
+                status: 409
+                detail: "Запитано 5 місць, вільно 2"
+
+    EventGone:
+      description: >-
+        Подію скасовано організатором. На відміну від SeatsUnavailable (409) -
+        це постійний стан: той самий запит ніколи не пройде, повторювати
+        його немає сенсу.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            eventCancelled:
+              value:
+                type: /errors/event-cancelled
+                title: Подію скасовано
+                status: 410
+                detail: "Організатор скасував цю подію, нові замовлення неможливі"

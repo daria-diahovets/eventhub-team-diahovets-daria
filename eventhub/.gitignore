@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 .turbo/
+.vite/
 
 # оточення — секрети НІКОЛИ не потрапляють у git
 .env

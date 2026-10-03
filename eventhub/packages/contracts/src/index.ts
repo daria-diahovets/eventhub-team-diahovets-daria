@@ -13,3 +13,9 @@ export type EventPage = components["schemas"]["EventPage"];
 export type VenueSummary = components["schemas"]["VenueSummary"];
 export type Money = components["schemas"]["Money"];
 export type Problem = components["schemas"]["Problem"];
+export type Order = components["schemas"]["Order"];
+export type CreateOrderRequest = components["schemas"]["CreateOrderRequest"];
+export type CreateOrderResponse = components["schemas"]["CreateOrderResponse"];
+export type CancelOrderRequest = components["schemas"]["CancelOrderRequest"];
+
+export * from "./schemas";
