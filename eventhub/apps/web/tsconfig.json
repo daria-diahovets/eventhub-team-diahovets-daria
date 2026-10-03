@@ -1,0 +1,27 @@
+{
+  // База спільна для всього монорепо. Розширюється відносним шляхом,
+  // а не через "@eventhub/config", щоб редактор бачив типи ще до
+  // першого pnpm install.
+  "extends": "../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    // DOM потрібен лише фронтенду — у базі його немає навмисно,
+    // щоб бекенд випадково не звернувся до window чи document.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+
+    "module": "ESNext",
+    // "bundler" означає: імпорти розв'язує збирач (Vite), а не Node.
+    // Саме тому можна писати "./App" без розширення .js.
+    "moduleResolution": "bundler",
+
+    "jsx": "react-jsx",
+
+    // Компілює Vite, а tsc використовується лише для перевірки типів.
+    "noEmit": true,
+
+    "allowImportingTsExtensions": true,
+
+    // Підключає типи import.meta.env (див. src/vite-env.d.ts).
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
+}

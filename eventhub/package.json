@@ -1,0 +1,20 @@
+{
+  "name": "eventhub",
+  "private": true,
+  "packageManager": "pnpm@11.24.0",
+  "engines": { "node": "^24.20.0" },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "contracts": "turbo run build --filter=@eventhub/contracts",
+    "mock": "prism mock packages/contracts/openapi.yaml --port 4010"
+  },
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.16.0",
+    "prettier": "^3.4.0",
+    "turbo": "^2.10.0",
+    "typescript": "5.9.3"
+  }
+}

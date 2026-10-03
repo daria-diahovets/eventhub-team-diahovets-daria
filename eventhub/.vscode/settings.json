@@ -1,0 +1,50 @@
+{
+  // ─── Термінал ────────────────────────────────────────────────────────────
+  // Усі команди методички написані для Bash. На Windows VS Code за
+  // замовчуванням відкриває PowerShell, де частина з них поводиться інакше.
+  // Цей рядок робить Git Bash терміналом за замовчуванням для всіх.
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+
+  // ─── TypeScript ──────────────────────────────────────────────────────────
+  // Використовувати компілятор із node_modules (у нас закріплений 5.9.3),
+  // а не той, що вбудований у VS Code. Без цього рядка редактор показує
+  // одні помилки, а `pnpm typecheck` і CI — інші, і ви шукаєте розбіжність
+  // там, де її немає.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Показувати шляхи імпортів відносно пакета, а не з коренем монорепо
+  "typescript.preferences.importModuleSpecifier": "shortest",
+
+  // ─── Формат файлів ───────────────────────────────────────────────────────
+  // LF в усіх файлах незалежно від ОС — узгоджено з core.autocrlf input
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // ─── ESLint ──────────────────────────────────────────────────────────────
+  // Плоска конфігурація (eslint.config.js) — єдиний формат в ESLint 10
+  "eslint.useFlatConfig": true,
+
+  // ─── Продуктивність у монорепо ───────────────────────────────────────────
+  // Без цих винятків VS Code індексує node_modules усіх пакетів
+  // і пошук по проєкту стає марним
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.turbo": true,
+    "**/src/generated": true,
+    "**/pnpm-lock.yaml": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.turbo/**": true
+  }
+}

@@ -1,0 +1,20 @@
+# залежності
+node_modules/
+
+# результати збірки
+dist/
+build/
+.turbo/
+
+# оточення — секрети НІКОЛИ не потрапляють у git
+.env
+.env.*
+!.env.example
+
+# редактори й ОС
+.DS_Store
+.idea/
+*.swp
+
+# тести
+coverage/
