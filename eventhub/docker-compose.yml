@@ -1,0 +1,24 @@
+# Локальна база для розробки.
+#
+# Тут лише Postgres: щоб у всієї групи була одна версія
+# й однаковий пароль, і не виникало питань із-за різниці в версії
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: eventhub-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eventhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - eventhub-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d eventhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  eventhub-pgdata:
