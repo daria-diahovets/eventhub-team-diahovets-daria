@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { Logger } from "nestjs-pino";
+import { env } from "./config/env";
 import { AppModule } from "./app.module";
 import { ZodValidationPipe } from "./common/validation/zod-validation.pipe";
 
@@ -13,14 +14,13 @@ async function bootstrap(): Promise<void> {
   // Дозволяємо запити з dev-сервера Vite.
   // У тижні 14 це значення прийде з оточення продакшн-сервера.
   app.enableCors({
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
+    origin: env.WEB_ORIGIN,
     credentials: true,
   });
 
-  const port = Number(process.env.PORT ?? 3000);
-  await app.listen(port);
+  await app.listen(env.PORT);
 
-  app.get(Logger).log(`api-gateway слухає http://localhost:${port}`, "Bootstrap");
+  app.get(Logger).log(`api-gateway слухає http://localhost:${env.PORT}`, "Bootstrap");
 }
 
 void bootstrap();

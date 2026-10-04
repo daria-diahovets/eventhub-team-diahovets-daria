@@ -6,8 +6,14 @@ import { OrderRepository } from "./order.repository";
 import type { StoredOrder } from "./order.types";
 
 function toOrderDto(order: StoredOrder): Order {
-  const { cancellationTokenHash: _hash, ...dto } = order;
-  return dto;
+  return {
+    id: order.id,
+    eventId: order.eventId,
+    quantity: order.quantity,
+    status: order.status,
+    totalPrice: { amount: order.totalPriceCents, currency: order.currency as "UAH" },
+    createdAt: order.createdAt.toISOString(),
+  };
 }
 
 @Injectable()
@@ -18,27 +24,28 @@ export class OrdersService {
   ) {}
 
   async create(eventId: string, quantity: number): Promise<CreateOrderResponse> {
-    const event = await this.catalog.reserveSeats(eventId, quantity);
+    await this.catalog.reserveSeats(eventId, quantity);
 
-    const totalPrice = {
-      amount: event.minPrice.amount * quantity,
-      currency: event.minPrice.currency,
-    };
-
-    const { order, cancellationToken } = this.orders.create(eventId, quantity, totalPrice);
-    return { ...toOrderDto(order), cancellationToken };
+    try {
+      const { order, cancellationToken } = await this.orders.create(eventId, quantity);
+      return { ...toOrderDto(order), cancellationToken };
+    } catch (err) {
+      await this.catalog.releaseSeats(eventId, quantity);
+      throw err;
+    }
   }
 
   async getOne(orderId: string): Promise<Order> {
-    const order = this.orders.byId(orderId);
+    const order = await this.orders.byId(orderId);
     if (!order) throw new OrderNotFound(orderId);
     return toOrderDto(order);
   }
 
   async cancel(orderId: string, cancellationToken: string): Promise<Order> {
-    const wasConfirmed = this.orders.byId(orderId)?.status === "confirmed";
+    const existing = await this.orders.byId(orderId);
+    const wasConfirmed = existing?.status === "confirmed";
 
-    const order = this.orders.cancel(orderId, cancellationToken);
+    const order = await this.orders.cancel(orderId, cancellationToken);
 
     if (wasConfirmed) {
       await this.catalog.releaseSeats(order.eventId, order.quantity);

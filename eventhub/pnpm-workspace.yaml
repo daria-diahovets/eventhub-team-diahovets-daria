@@ -5,5 +5,9 @@ packages:
 engineStrict: true
 
 allowBuilds:
-  esbuild: true          # потрібен Vite для збірки фронтенду
-  "@scarf/scarf": false  # телеметрія, збирати нічого
+  esbuild: true # потрібен Vite для збірки фронтенду
+  "@prisma/client": true # генерує клієнт під час установки
+  prisma: true # завантажує рушій запитів
+  "@prisma/engines": true # сам бінарник рушія запитів Prisma
+  "@scarf/scarf": false # телеметрія, збирати нічого
+  workerd: false # привид невдалої спроби встановити Prisma 8-rc; у дереві вже нема
