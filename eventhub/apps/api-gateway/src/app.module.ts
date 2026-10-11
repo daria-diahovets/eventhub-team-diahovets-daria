@@ -2,16 +2,19 @@ import { randomUUID } from "node:crypto";
 import { Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
+import { env } from "./config/env";
+import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./health/health.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { OrdersModule } from "./orders/orders.module";
+import { ReportsModule } from "./reports/reports.module";
 import { ProblemFilter } from "./common/problem/problem.filter";
 
 @Module({
   imports: [
     LoggerModule.forRoot({
       pinoHttp: {
-        level: process.env.LOG_LEVEL ?? "info",
+        level: env.LOG_LEVEL,
         genReqId: (req, res) => {
           const incoming = req.headers["x-request-id"];
           const id = typeof incoming === "string" && incoming ? incoming : randomUUID();
@@ -29,9 +32,11 @@ import { ProblemFilter } from "./common/problem/problem.filter";
             : { target: "pino-pretty", options: { singleLine: true } },
       },
     }),
+    PrismaModule,
     HealthModule,
     CatalogModule,
     OrdersModule,
+    ReportsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
 })

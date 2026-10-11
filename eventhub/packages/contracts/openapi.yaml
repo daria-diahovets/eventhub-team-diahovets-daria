@@ -253,6 +253,21 @@ paths:
             зміг би перебором дізнатись, які orderId взагалі існують.
           $ref: "#/components/responses/NotFound"
 
+  /reports/revenue:
+    get:
+      operationId: getRevenueReport
+      summary: Звіт організатора - продані місця й виручка на кожну подію
+      tags: [reports]
+      responses:
+        "200":
+          description: Один рядок на подію, однин запит до бази
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventRevenue"
+
 components:
   schemas:
     Event:
@@ -340,6 +355,15 @@ components:
       required: [cancellationToken]
       properties:
         cancellationToken: { type: string }
+
+    EventRevenue:
+      type: object
+      required: [eventId, title, soldSeats, revenue]
+      properties:
+        eventId:   { type: string, format: uuid }
+        title:     { type: string }
+        soldSeats: { type: integer, minimum: 0 }
+        revenue:   { $ref: "#/components/schemas/Money" }
 
     Problem:
       type: object

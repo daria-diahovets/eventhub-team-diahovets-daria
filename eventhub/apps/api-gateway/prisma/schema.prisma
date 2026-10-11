@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SeatStatus {
+  FREE
+  HELD
+  SOLD
+}
+
+enum EventStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum OrderStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model Venue {
+  id     String  @id @default(uuid(7)) @db.Uuid
+  name   String
+  city   String
+  events Event[]
+
+  @@index([city])
+}
+
+model Event {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  title          String
+  description    String?
+  category       String
+  imageUrl       String?
+  status         EventStatus @default(SCHEDULED)
+  startsAt       DateTime    @db.Timestamptz(3)
+  endsAt         DateTime?   @db.Timestamptz(3)
+  minPriceCents  Int
+  currency       String      @default("UAH") @db.Char(3)
+  availableSeats Int         @default(0)
+  venueId        String      @db.Uuid
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+
+  venue  Venue       @relation(fields: [venueId], references: [id])
+  seats  Seat[]
+  orders Order[]
+
+  @@index([startsAt, id])
+  @@index([venueId])
+}
+
+model Seat {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  eventId    String     @db.Uuid
+  rowLabel   String
+  number     Int
+  priceCents Int
+  status     SeatStatus @default(FREE)
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([eventId, rowLabel, number])
+  @@index([eventId, status])
+}
+
+model Order {
+  id                    String      @id @default(uuid(7)) @db.Uuid
+  eventId               String      @db.Uuid
+  status                OrderStatus @default(CONFIRMED)
+  cancellationTokenHash String
+  createdAt             DateTime    @default(now()) @db.Timestamptz(3)
+
+  event Event       @relation(fields: [eventId], references: [id])
+  items OrderItem[]
+
+  @@index([eventId])
+}
+
+/// priceCentsAtPurchase фіксує ціну місця на момент покупки. Seat.priceCents
+/// може згодом змінитися (переоцінка організатором, знижка), а вже оформлене
+/// замовлення має показувати суму, яку клієнт реально сплатив, а не поточну
+/// ціну місця - інакше історія замовлень розійдеться з реальними транзакціями.
+model OrderItem {
+  id                   String @id @default(uuid(7)) @db.Uuid
+  orderId              String @db.Uuid
+  seatId               String @db.Uuid
+  eventId              String @db.Uuid
+  priceCentsAtPurchase Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  seat  Seat  @relation(fields: [seatId], references: [id])
+
+  @@unique([seatId, orderId])
+  @@index([eventId, orderId])
+}
