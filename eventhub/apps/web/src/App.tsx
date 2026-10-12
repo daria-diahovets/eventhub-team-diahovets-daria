@@ -1,4 +1,6 @@
+import { Route, Routes } from "react-router-dom";
 import { EventList } from "./features/catalog/EventList";
+import { EventDetails } from "./features/catalog/EventDetails";
 
 export function App() {
   return (
@@ -8,7 +10,10 @@ export function App() {
         <p className="page__subtitle">Квитки на події</p>
       </header>
 
-      <EventList />
+      <Routes>
+        <Route path="/" element={<EventList />} />
+        <Route path="/events/:eventId" element={<EventDetails />} />
+      </Routes>
     </main>
   );
 }

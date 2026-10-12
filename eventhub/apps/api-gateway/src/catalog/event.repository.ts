@@ -36,6 +36,9 @@ export class EventRepository {
         ...(params.category
           ? { category: { equals: params.category, mode: "insensitive" } }
           : {}),
+        ...(params.q
+          ? { title: { contains: params.q, mode: "insensitive" } }
+          : {}),
         ...(params.from
           ? { startsAt: { gte: new Date(`${params.from}T00:00:00Z`) } }
           : {}),

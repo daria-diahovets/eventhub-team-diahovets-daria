@@ -10,6 +10,7 @@ const uuidLike = z
 export const listEventsQuery = z.object({
   city: z.string().trim().min(1).optional(),
   category: z.string().trim().min(1).optional(),
+  q: z.string().trim().min(1).optional(),
   from: z.string().date().optional(),
   to: z.string().date().optional(),
   cursor: z.string().min(1).optional(),
