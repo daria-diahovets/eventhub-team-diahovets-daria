@@ -14,6 +14,7 @@ export class CatalogService {
     const rows = await this.repo.find({
       city: query.city,
       category: query.category,
+      q: query.q,
       from: query.from,
       to: query.to,
       after,

@@ -6,6 +6,7 @@ export interface CursorPosition {
 export interface FindParams {
   city?: string;
   category?: string;
+  q?: string;
   from?: string;
   to?: string;
   after?: CursorPosition;

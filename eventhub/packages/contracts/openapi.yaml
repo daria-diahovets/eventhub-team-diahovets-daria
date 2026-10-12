@@ -31,6 +31,13 @@ paths:
           schema:
             type: string
             examples: [concert]
+        - name: q
+          in: query
+          required: false
+          description: Пошук за назвою події (підрядок, без урахування регістру)
+          schema:
+            type: string
+            examples: [джаз]
         - name: from
           in: query
           required: false
