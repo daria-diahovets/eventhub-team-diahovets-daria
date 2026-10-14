@@ -1,12 +1,16 @@
 import { HttpException } from "@nestjs/common";
 import type { Problem } from "@eventhub/contracts";
 import {
+  EmailTaken,
   EventCancelled,
   EventNotFound,
+  InvalidCredentials,
   InvalidCursor,
+  InvalidRefreshToken,
   OrderNotFound,
   RequestValidationFailed,
   SeatsUnavailable,
+  Unauthenticated,
   type ValidationIssue,
 } from "./domain-errors";
 
@@ -67,6 +71,38 @@ export function toProblem(err: unknown): ProblemBody {
       title: "Замовлення не знайдено",
       status: 404,
       detail: err.message,
+    };
+  }
+
+  if (err instanceof EmailTaken) {
+    return {
+      type: "/errors/email-taken",
+      title: "Ця пошта вже зареєстрована",
+      status: 409,
+    };
+  }
+
+  if (err instanceof InvalidCredentials) {
+    return {
+      type: "/errors/invalid-credentials",
+      title: "Невірна пошта або пароль",
+      status: 401,
+    };
+  }
+
+  if (err instanceof Unauthenticated) {
+    return {
+      type: "/errors/unauthenticated",
+      title: "Необхідна автентифікація",
+      status: 401,
+    };
+  }
+
+  if (err instanceof InvalidRefreshToken) {
+    return {
+      type: "/errors/invalid-refresh-token",
+      title: "Недійсний refresh-токен",
+      status: 401,
     };
   }
 

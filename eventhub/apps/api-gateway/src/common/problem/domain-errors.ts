@@ -50,3 +50,27 @@ export class RequestValidationFailed extends DomainError {
     super("Помилка валідації запиту");
   }
 }
+
+export class EmailTaken extends DomainError {
+  constructor(readonly email: string) {
+    super(`Пошта ${email} вже зареєстрована`);
+  }
+}
+
+export class InvalidCredentials extends DomainError {
+  constructor() {
+    super("Невірна пошта або пароль");
+  }
+}
+
+export class Unauthenticated extends DomainError {
+  constructor() {
+    super("Відсутній або недійсний access-токен");
+  }
+}
+
+export class InvalidRefreshToken extends DomainError {
+  constructor() {
+    super("Відсутній, протермінований або вже використаний refresh-токен");
+  }
+}

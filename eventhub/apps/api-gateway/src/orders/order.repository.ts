@@ -11,6 +11,7 @@ function hashToken(token: string): string {
 interface OrderWithItems {
   id: string;
   eventId: string;
+  userId: string;
   status: "CONFIRMED" | "CANCELLED";
   createdAt: Date;
   items: { priceCentsAtPurchase: number }[];
@@ -20,6 +21,7 @@ function toStoredOrder(order: OrderWithItems): StoredOrder {
   return {
     id: order.id,
     eventId: order.eventId,
+    userId: order.userId,
     quantity: order.items.length,
     status: order.status === "CANCELLED" ? "cancelled" : "confirmed",
     totalPriceCents: order.items.reduce((sum, i) => sum + i.priceCentsAtPurchase, 0),
@@ -35,6 +37,7 @@ export class OrderRepository {
   async create(
     eventId: string,
     quantity: number,
+    userId: string,
   ): Promise<{ order: StoredOrder; cancellationToken: string }> {
     const cancellationToken = randomBytes(24).toString("base64url");
     const cancellationTokenHash = hashToken(cancellationToken);
@@ -58,6 +61,7 @@ export class OrderRepository {
       return tx.order.create({
         data: {
           eventId,
+          userId,
           cancellationTokenHash,
           items: {
             create: seats.map((seat) => ({

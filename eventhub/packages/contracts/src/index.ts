@@ -18,5 +18,9 @@ export type CreateOrderRequest = components["schemas"]["CreateOrderRequest"];
 export type CreateOrderResponse = components["schemas"]["CreateOrderResponse"];
 export type CancelOrderRequest = components["schemas"]["CancelOrderRequest"];
 export type EventRevenue = components["schemas"]["EventRevenue"];
+export type User = components["schemas"]["User"];
+export type RegisterRequest = components["schemas"]["RegisterRequest"];
+export type LoginRequest = components["schemas"]["LoginRequest"];
+export type AuthResponse = components["schemas"]["AuthResponse"];
 
 export * from "./schemas";
