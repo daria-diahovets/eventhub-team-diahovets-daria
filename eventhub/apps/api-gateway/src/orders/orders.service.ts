@@ -23,11 +23,11 @@ export class OrdersService {
     private readonly catalog: CatalogService,
   ) {}
 
-  async create(eventId: string, quantity: number): Promise<CreateOrderResponse> {
+  async create(eventId: string, quantity: number, userId: string): Promise<CreateOrderResponse> {
     await this.catalog.reserveSeats(eventId, quantity);
 
     try {
-      const { order, cancellationToken } = await this.orders.create(eventId, quantity);
+      const { order, cancellationToken } = await this.orders.create(eventId, quantity, userId);
       return { ...toOrderDto(order), cancellationToken };
     } catch (err) {
       await this.catalog.releaseSeats(eventId, quantity);
@@ -35,9 +35,9 @@ export class OrdersService {
     }
   }
 
-  async getOne(orderId: string): Promise<Order> {
+  async getOne(orderId: string, requesterId: string): Promise<Order> {
     const order = await this.orders.byId(orderId);
-    if (!order) throw new OrderNotFound(orderId);
+    if (!order || order.userId !== requesterId) throw new OrderNotFound(orderId);
     return toOrderDto(order);
   }
 

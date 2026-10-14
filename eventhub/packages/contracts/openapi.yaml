@@ -275,6 +275,120 @@ paths:
                 items:
                   $ref: "#/components/schemas/EventRevenue"
 
+  /auth/register:
+    post:
+      operationId: registerUser
+      summary: Зареєструвати користувача
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Користувача створено, видано пару токенів
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Пошта вже зареєстрована
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                emailTaken:
+                  value:
+                    type: /errors/email-taken
+                    title: Ця пошта вже зареєстрована
+                    status: 409
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      summary: Увійти
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Видано пару токенів
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Обміняти refresh-токен (з cookie) на нову пару
+      tags: [auth]
+      responses:
+        "200":
+          description: Нова пара токенів, refresh-cookie оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Refresh-токен відсутній, протермінований або вже використаний
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      summary: Вийти (відкликати поточний ланцюжок refresh-токенів)
+      tags: [auth]
+      responses:
+        "204":
+          description: Сесію завершено, refresh-cookie очищено
+
+  /auth/logout-all:
+    post:
+      operationId: logoutAllDevices
+      summary: Вийти з усіх пристроїв (відкликати всі ланцюжки refresh-токенів користувача)
+      description: Потребує заголовок Authorization з access-токеном.
+      tags: [auth]
+      responses:
+        "204":
+          description: Усі сесії користувача завершено
+        "401":
+          description: Відсутній, протермінований або підроблений access-токен
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: Поточний користувач
+      description: Потребує заголовок Authorization з access-токеном.
+      tags: [auth]
+      responses:
+        "200":
+          description: Дані поточного користувача
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Відсутній, протермінований або підроблений access-токен
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
 components:
   schemas:
     Event:
@@ -372,6 +486,38 @@ components:
         soldSeats: { type: integer, minimum: 0 }
         revenue:   { $ref: "#/components/schemas/Money" }
 
+    User:
+      type: object
+      required: [id, email, role, createdAt]
+      properties:
+        id:        { type: string, format: uuid }
+        email:     { type: string, format: email }
+        role:
+          type: string
+          enum: [user, organizer, admin]
+        createdAt: { type: string, format: date-time }
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, minLength: 10, maxLength: 128 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, minLength: 1, maxLength: 128 }
+
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken: { type: string }
+        user:        { $ref: "#/components/schemas/User" }
+
     Problem:
       type: object
       description: RFC 9457 Problem Details
@@ -416,6 +562,18 @@ components:
                 detail: >-
                   Замовлення з таким id не існує, або наданий
                   cancellationToken йому не відповідає
+
+    InvalidCredentials:
+      description: Пошта не зареєстрована або пароль невірний - відповідь однакова в обох випадках
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            invalidCredentials:
+              value:
+                type: /errors/invalid-credentials
+                title: Невірна пошта або пароль
+                status: 401
 
     SeatsUnavailable:
       description: >-
