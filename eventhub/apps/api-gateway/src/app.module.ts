@@ -8,6 +8,7 @@ import { HealthModule } from "./health/health.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { OrdersModule } from "./orders/orders.module";
 import { ReportsModule } from "./reports/reports.module";
+import { AuthModule } from "./auth/auth.module";
 import { ProblemFilter } from "./common/problem/problem.filter";
 
 @Module({
@@ -37,6 +38,7 @@ import { ProblemFilter } from "./common/problem/problem.filter";
     CatalogModule,
     OrdersModule,
     ReportsModule,
+    AuthModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
 })

@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import cookieParser from "cookie-parser";
 import { NestFactory } from "@nestjs/core";
 import { Logger } from "nestjs-pino";
 import { env } from "./config/env";
@@ -9,6 +10,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
 
+  app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());
 
   // Дозволяємо запити з dev-сервера Vite.
