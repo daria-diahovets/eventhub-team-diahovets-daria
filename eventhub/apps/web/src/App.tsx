@@ -4,7 +4,10 @@ import { EventDetails } from "./features/catalog/EventDetails";
 import { LoginPage } from "./features/auth/LoginPage";
 import { MePage } from "./features/auth/MePage";
 import { RequireAuth } from "./features/auth/RequireAuth";
+import { RequireRole } from "./features/auth/RequireRole";
 import { useCurrentUser, useLogout } from "./features/auth/useAuth";
+import { OrganizerEventsPage } from "./features/organizer/OrganizerEventsPage";
+import { OrganizerEventEditPage } from "./features/organizer/OrganizerEventEditPage";
 
 function AuthStatus() {
   const { data: user } = useCurrentUser();
@@ -14,6 +17,9 @@ function AuthStatus() {
   if (user) {
     return (
       <div className="auth-status">
+        {(user.role === "organizer" || user.role === "admin") && (
+          <Link to="/organizer">Кабінет організатора</Link>
+        )}
         <Link to="/me">{user.email}</Link>
         <button
           type="button"
@@ -50,6 +56,22 @@ export function App() {
             <RequireAuth>
               <MePage />
             </RequireAuth>
+          }
+        />
+        <Route
+          path="/organizer"
+          element={
+            <RequireRole roles={["organizer", "admin"]}>
+              <OrganizerEventsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/organizer/events/:eventId"
+          element={
+            <RequireRole roles={["organizer", "admin"]}>
+              <OrganizerEventEditPage />
+            </RequireRole>
           }
         />
       </Routes>

@@ -1,12 +1,18 @@
 import { HttpException } from "@nestjs/common";
 import type { Problem } from "@eventhub/contracts";
 import {
+  AccountExistsWithPassword,
   EmailTaken,
   EventCancelled,
   EventNotFound,
+  Forbidden,
   InvalidCredentials,
   InvalidCursor,
   InvalidRefreshToken,
+  InvalidVenue,
+  OAuthEmailNotVerified,
+  OAuthNotConfigured,
+  OAuthStateMismatch,
   OrderNotFound,
   RequestValidationFailed,
   SeatsUnavailable,
@@ -103,6 +109,55 @@ export function toProblem(err: unknown): ProblemBody {
       type: "/errors/invalid-refresh-token",
       title: "Недійсний refresh-токен",
       status: 401,
+    };
+  }
+
+  if (err instanceof Forbidden) {
+    return {
+      type: "/errors/forbidden",
+      title: "Вашій ролі не дозволено цю дію",
+      status: 403,
+    };
+  }
+
+  if (err instanceof InvalidVenue) {
+    return {
+      type: "/errors/invalid-venue",
+      title: "Майданчик не знайдено",
+      status: 422,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OAuthNotConfigured) {
+    return {
+      type: "/errors/oauth-not-configured",
+      title: "Вхід через Google не налаштовано",
+      status: 503,
+    };
+  }
+
+  if (err instanceof OAuthStateMismatch) {
+    return {
+      type: "/errors/oauth-state-mismatch",
+      title: "Сеанс входу через Google недійсний",
+      status: 401,
+    };
+  }
+
+  if (err instanceof OAuthEmailNotVerified) {
+    return {
+      type: "/errors/oauth-email-not-verified",
+      title: "Google не підтвердив пошту цього акаунта",
+      status: 401,
+    };
+  }
+
+  if (err instanceof AccountExistsWithPassword) {
+    return {
+      type: "/errors/account-exists-with-password",
+      title: "Ця пошта вже зареєстрована з паролем",
+      status: 409,
     };
   }
 

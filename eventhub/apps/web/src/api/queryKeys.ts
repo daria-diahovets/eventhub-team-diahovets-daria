@@ -5,3 +5,7 @@ export const eventKeys = {
   list: (filters: CatalogFilters) => ["events", "list", filters] as const,
   detail: (eventId: string) => ["events", "detail", eventId] as const,
 };
+
+export const organizerKeys = {
+  all: ["organizer", "events"] as const,
+};

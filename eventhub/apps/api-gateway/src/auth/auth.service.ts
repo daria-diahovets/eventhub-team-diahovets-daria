@@ -3,18 +3,23 @@ import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Prisma, type User as UserRow } from "@prisma/client";
 import * as argon2 from "argon2";
+import type { TokenPayload } from "google-auth-library";
 import type { User } from "@eventhub/contracts";
 import type { LoginBody, RegisterBody } from "@eventhub/contracts";
 import { InjectPinoLogger, type PinoLogger } from "nestjs-pino";
 import { PrismaService } from "../prisma/prisma.service";
 import { env } from "../config/env";
 import {
+  AccountExistsWithPassword,
   EmailTaken,
   InvalidCredentials,
   InvalidRefreshToken,
+  OAuthEmailNotVerified,
   Unauthenticated,
 } from "../common/problem/domain-errors";
 import type { TokenPair } from "./auth.types";
+
+const GOOGLE_PROVIDER = "google";
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -148,6 +153,44 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  async loginWithGoogle(claims: TokenPayload): Promise<TokenPair & { user: User }> {
+    const linked = await this.prisma.oAuthAccount.findUnique({
+      where: { provider_providerSubject: { provider: GOOGLE_PROVIDER, providerSubject: claims.sub } },
+      include: { user: true },
+    });
+
+    const user = linked ? linked.user : await this.linkOrCreateGoogleUser(claims);
+
+    const pair = await this.issuePair(user);
+    return { ...pair, user: toUserDto(pair.user) };
+  }
+
+  private async linkOrCreateGoogleUser(claims: TokenPayload): Promise<UserRow> {
+    if (!claims.email || claims.email_verified !== true) throw new OAuthEmailNotVerified();
+    const email = claims.email.toLowerCase();
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      // Лінкуємо лише якщо пошту підтверджено з обох боків - інакше
+      // це дало б змогу захопити акаунт, зареєстрований паролем раніше.
+      if (!existing.emailVerified) throw new AccountExistsWithPassword();
+      await this.prisma.oAuthAccount.create({
+        data: { userId: existing.id, provider: GOOGLE_PROVIDER, providerSubject: claims.sub },
+      });
+      return existing;
+    }
+
+    return this.prisma.user.create({
+      data: {
+        email,
+        emailVerified: true,
+        oauthAccounts: {
+          create: { provider: GOOGLE_PROVIDER, providerSubject: claims.sub },
+        },
+      },
     });
   }
 
