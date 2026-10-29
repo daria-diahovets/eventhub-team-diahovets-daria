@@ -9,6 +9,7 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { OrdersModule } from "./orders/orders.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AuthModule } from "./auth/auth.module";
+import { OrganizerModule } from "./organizer/organizer.module";
 import { ProblemFilter } from "./common/problem/problem.filter";
 
 @Module({
@@ -39,6 +40,7 @@ import { ProblemFilter } from "./common/problem/problem.filter";
     OrdersModule,
     ReportsModule,
     AuthModule,
+    OrganizerModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
 })

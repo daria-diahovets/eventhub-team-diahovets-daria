@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { titleOf } from "../../api/problem";
 import { useLogin, useRegister } from "./useAuth";
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  "oauth-not-configured": "Вхід через Google поки не налаштовано",
+  "oauth-state-mismatch": "Сеанс входу через Google недійсний, спробуйте ще раз",
+  "oauth-email-not-verified": "Google не підтвердив пошту цього акаунта",
+  "account-exists-with-password": "Ця пошта вже зареєстрована з паролем - увійдіть ним",
+};
 
 export function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const oauthError = searchParams.get("oauthError");
 
   const login = useLogin();
   const register = useRegister();
@@ -23,6 +32,9 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
+      {oauthError && (
+        <p role="alert">{OAUTH_ERROR_MESSAGES[oauthError] ?? "Вхід через Google не вдався"}</p>
+      )}
       <form onSubmit={handleSubmit} className="auth-form">
         <label>
           Пошта
@@ -54,6 +66,7 @@ export function LoginPage() {
           {mode === "login" ? "Ще немає акаунта? Реєстрація" : "Вже є акаунт? Вхід"}
         </button>
       </form>
+      <a href={`${import.meta.env.VITE_API_URL}/auth/google`}>Увійти через Google</a>
     </div>
   );
 }
