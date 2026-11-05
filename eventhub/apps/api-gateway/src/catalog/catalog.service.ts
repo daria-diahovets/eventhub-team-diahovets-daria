@@ -1,12 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import type { Event, EventPage, ListEventsQuery } from "@eventhub/contracts";
+import type { Event, EventPage, ListEventsQuery, SeatMap } from "@eventhub/contracts";
 import { EventRepository } from "./event.repository";
+import { SeatRepository } from "./seat.repository";
 import { EventNotFound } from "../common/problem/domain-errors";
 import { decodeCursor, encodeCursor } from "./cursor";
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly repo: EventRepository) {}
+  constructor(
+    private readonly repo: EventRepository,
+    private readonly seats: SeatRepository,
+  ) {}
 
   async list(query: ListEventsQuery): Promise<EventPage> {
     const after = query.cursor ? decodeCursor(query.cursor) : undefined;
@@ -37,11 +41,7 @@ export class CatalogService {
     return event;
   }
 
-  async reserveSeats(eventId: string, quantity: number): Promise<Event> {
-    return this.repo.reserveSeats(eventId, quantity);
-  }
-
-  async releaseSeats(eventId: string, quantity: number): Promise<void> {
-    return this.repo.releaseSeats(eventId, quantity);
+  seatMap(eventId: string): Promise<SeatMap> {
+    return this.seats.seatMap(eventId);
   }
 }

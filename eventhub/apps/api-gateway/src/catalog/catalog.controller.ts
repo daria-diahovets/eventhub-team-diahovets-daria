@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import type { Event, EventPage } from "@eventhub/contracts";
+import type { Event, EventPage, SeatMap } from "@eventhub/contracts";
 import { CatalogService } from "./catalog.service";
 import { EventIdParamDto, ListEventsQueryDto } from "./catalog.dto";
 
@@ -15,5 +15,10 @@ export class CatalogController {
   @Get(":eventId")
   getOne(@Param() params: EventIdParamDto): Promise<Event> {
     return this.catalog.getOne(params.eventId);
+  }
+
+  @Get(":eventId/seats")
+  listSeats(@Param() params: EventIdParamDto): Promise<SeatMap> {
+    return this.catalog.seatMap(params.eventId);
   }
 }

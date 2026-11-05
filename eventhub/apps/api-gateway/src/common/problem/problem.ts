@@ -3,9 +3,9 @@ import type { Problem } from "@eventhub/contracts";
 import {
   AccountExistsWithPassword,
   EmailTaken,
-  EventCancelled,
   EventNotFound,
   Forbidden,
+  IdempotencyKeyReused,
   InvalidCredentials,
   InvalidCursor,
   InvalidRefreshToken,
@@ -14,6 +14,7 @@ import {
   OAuthNotConfigured,
   OAuthStateMismatch,
   OrderNotFound,
+  OrderStateConflict,
   RequestValidationFailed,
   SeatsUnavailable,
   Unauthenticated,
@@ -22,6 +23,7 @@ import {
 
 export interface ProblemBody extends Problem {
   errors?: ValidationIssue[];
+  seatIds?: string[];
 }
 
 export function toProblem(err: unknown): ProblemBody {
@@ -56,18 +58,10 @@ export function toProblem(err: unknown): ProblemBody {
   if (err instanceof SeatsUnavailable) {
     return {
       type: "/errors/seats-unavailable",
-      title: "Недостатньо вільних місць",
+      title: "Місця вже зайняті",
       status: 409,
       detail: err.message,
-    };
-  }
-
-  if (err instanceof EventCancelled) {
-    return {
-      type: "/errors/event-cancelled",
-      title: "Подію скасовано",
-      status: 410,
-      detail: err.message,
+      seatIds: err.seatIds,
     };
   }
 
@@ -77,6 +71,23 @@ export function toProblem(err: unknown): ProblemBody {
       title: "Замовлення не знайдено",
       status: 404,
       detail: err.message,
+    };
+  }
+
+  if (err instanceof OrderStateConflict) {
+    return {
+      type: "/errors/order-state",
+      title: "Замовлення вже не очікує оплати",
+      status: 409,
+      detail: `Поточний стан: ${err.current}`,
+    };
+  }
+
+  if (err instanceof IdempotencyKeyReused) {
+    return {
+      type: "/errors/idempotency-key-reused",
+      title: "Цей ключ ідемпотентності вже використано з іншим запитом",
+      status: 422,
     };
   }
 

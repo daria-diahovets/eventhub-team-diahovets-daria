@@ -14,15 +14,18 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async revenueByEvent(): Promise<EventRevenue[]> {
+    // "Продано" тут - будь-яке замовлення, що не скасоване й не протерміноване
+    // (PENDING/PAID/REFUNDED): оплати ще немає (див. тиждень 8), а місце вже
+    // утримує цей рядок, тож для звіту воно вважається зайнятим.
     const rows = await this.prisma.$queryRaw<RevenueRow[]>`
       SELECT
         e.id AS "eventId",
         e.title AS "title",
-        COUNT(o.id) AS "soldSeats",
-        COALESCE(SUM(CASE WHEN o.id IS NOT NULL THEN oi."priceCentsAtPurchase" END), 0) AS "revenueCents"
+        COUNT(oi.id) AS "soldSeats",
+        COALESCE(SUM(oi."priceCents"), 0) AS "revenueCents"
       FROM "Event" e
-      LEFT JOIN "OrderItem" oi ON oi."eventId" = e.id
-      LEFT JOIN "Order" o ON o.id = oi."orderId" AND o.status = 'CONFIRMED'
+      LEFT JOIN "Order" o ON o."eventId" = e.id AND o.status NOT IN ('CANCELLED', 'EXPIRED')
+      LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
       GROUP BY e.id, e.title
       ORDER BY e.title
     `;

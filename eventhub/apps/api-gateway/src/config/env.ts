@@ -16,6 +16,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   GOOGLE_REDIRECT_URI: z.string().default("http://localhost:5173/api/auth/google/callback"),
+  ORDER_HOLD_MINUTES: z.coerce.number().int().positive().default(15),
+  SWEEPER_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+  SWEEPER_BATCH: z.coerce.number().int().positive().default(200),
 });
 
 export const env = envSchema.parse(process.env);

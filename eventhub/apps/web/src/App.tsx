@@ -8,6 +8,8 @@ import { RequireRole } from "./features/auth/RequireRole";
 import { useCurrentUser, useLogout } from "./features/auth/useAuth";
 import { OrganizerEventsPage } from "./features/organizer/OrganizerEventsPage";
 import { OrganizerEventEditPage } from "./features/organizer/OrganizerEventEditPage";
+import { MyOrdersPage } from "./features/orders/MyOrdersPage";
+import { OrderPage } from "./features/orders/OrderPage";
 
 function AuthStatus() {
   const { data: user } = useCurrentUser();
@@ -20,6 +22,7 @@ function AuthStatus() {
         {(user.role === "organizer" || user.role === "admin") && (
           <Link to="/organizer">Кабінет організатора</Link>
         )}
+        <Link to="/orders">Мої замовлення</Link>
         <Link to="/me">{user.email}</Link>
         <button
           type="button"
@@ -72,6 +75,22 @@ export function App() {
             <RequireRole roles={["organizer", "admin"]}>
               <OrganizerEventEditPage />
             </RequireRole>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <RequireAuth>
+              <MyOrdersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/orders/:orderId"
+          element={
+            <RequireAuth>
+              <OrderPage />
+            </RequireAuth>
           }
         />
       </Routes>
