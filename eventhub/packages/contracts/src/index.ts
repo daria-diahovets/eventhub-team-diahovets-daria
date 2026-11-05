@@ -22,5 +22,7 @@ export type User = components["schemas"]["User"];
 export type RegisterRequest = components["schemas"]["RegisterRequest"];
 export type LoginRequest = components["schemas"]["LoginRequest"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
+export type CreateEventRequest = components["schemas"]["CreateEventRequest"];
+export type UpdateEventRequest = components["schemas"]["UpdateEventRequest"];
 
 export * from "./schemas";

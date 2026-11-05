@@ -52,3 +52,21 @@ export const loginBody = z.object({
   password: z.string().min(1).max(128),
 });
 export type LoginBody = z.infer<typeof loginBody>;
+
+export const createEventBody = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(2000).optional(),
+  category: z.string().trim().min(1).max(50),
+  imageUrl: z.string().url().optional(),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().optional(),
+  venueId: uuidLike,
+  minPriceCents: z.number().int().min(0),
+  availableSeats: z.number().int().min(0).default(0),
+});
+export type CreateEventBody = z.infer<typeof createEventBody>;
+
+export const updateEventBody = createEventBody.partial().extend({
+  status: z.enum(["scheduled", "cancelled"]).optional(),
+});
+export type UpdateEventBody = z.infer<typeof updateEventBody>;

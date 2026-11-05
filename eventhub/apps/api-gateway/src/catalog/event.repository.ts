@@ -5,9 +5,9 @@ import { PrismaService } from "../prisma/prisma.service";
 import type { FindParams } from "./catalog.types";
 import { EventCancelled, EventNotFound, SeatsUnavailable } from "../common/problem/domain-errors";
 
-type EventWithVenue = EventRow & { venue: VenueRow };
+export type EventWithVenue = EventRow & { venue: VenueRow };
 
-function toEvent(row: EventWithVenue): Event {
+export function toEvent(row: EventWithVenue): Event {
   return {
     id: row.id,
     title: row.title,

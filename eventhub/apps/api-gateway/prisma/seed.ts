@@ -1,6 +1,16 @@
 import { PrismaClient } from "@prisma/client";
+import * as argon2 from "argon2";
 
 const prisma = new PrismaClient();
+
+const DEMO_PASSWORD = "eventhub-demo-2026";
+
+const USERS = [
+  { email: "student@example.com", role: "USER" as const },
+  { email: "organizer@example.com", role: "ORGANIZER" as const },
+  { email: "organizer2@example.com", role: "ORGANIZER" as const },
+  { email: "admin@example.com", role: "ADMIN" as const },
+];
 
 const VENUES = [
   { id: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00", name: "Філармонія", city: "Вінниця" },
@@ -23,6 +33,7 @@ const EVENTS = [
     minPriceCents: 25000,
     availableSeats: 143,
     venueId: VENUES[0].id,
+    organizerEmail: USERS[1].email,
   },
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0",
@@ -33,6 +44,7 @@ const EVENTS = [
     minPriceCents: 18000,
     availableSeats: 12,
     venueId: VENUES[1].id,
+    organizerEmail: USERS[1].email,
   },
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea1",
@@ -43,6 +55,7 @@ const EVENTS = [
     minPriceCents: 15000,
     availableSeats: 80,
     venueId: VENUES[2].id,
+    organizerEmail: USERS[1].email,
   },
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea2",
@@ -53,6 +66,7 @@ const EVENTS = [
     minPriceCents: 30000,
     availableSeats: 500,
     venueId: VENUES[3].id,
+    organizerEmail: USERS[1].email,
   },
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea3",
@@ -63,6 +77,7 @@ const EVENTS = [
     minPriceCents: 22000,
     availableSeats: 60,
     venueId: VENUES[4].id,
+    organizerEmail: USERS[1].email,
   },
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea4",
@@ -73,6 +88,7 @@ const EVENTS = [
     minPriceCents: 35000,
     availableSeats: 20,
     venueId: VENUES[5].id,
+    organizerEmail: USERS[2].email,
   },
 ];
 
@@ -89,22 +105,46 @@ function buildSeats(eventId: string, count: number, priceCents: number) {
 }
 
 async function main(): Promise<void> {
+  const passwordHash = await argon2.hash(DEMO_PASSWORD, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+  });
+
+  const userIdByEmail = new Map<string, string>();
+  for (const u of USERS) {
+    // upsert за поштою, а не id: email - реальний унікальний ключ User,
+    // і попередні лабораторні вже могли створити цих користувачів із
+    // іншими id (вручну через /auth/register).
+    const row = await prisma.user.upsert({
+      where: { email: u.email },
+      update: { role: u.role },
+      create: { email: u.email, role: u.role, passwordHash },
+    });
+    userIdByEmail.set(u.email, row.id);
+  }
+
   for (const v of VENUES) {
     await prisma.venue.upsert({ where: { id: v.id }, update: v, create: v });
   }
 
-  for (const e of EVENTS) {
-    await prisma.event.upsert({ where: { id: e.id }, update: e, create: e });
+  for (const { organizerEmail, ...e } of EVENTS) {
+    const organizerId = userIdByEmail.get(organizerEmail);
+    const data = { ...e, organizerId };
+    await prisma.event.upsert({ where: { id: e.id }, update: data, create: data });
     await prisma.seat.deleteMany({ where: { eventId: e.id } });
     await prisma.seat.createMany({
       data: buildSeats(e.id, e.availableSeats, e.minPriceCents),
     });
   }
 
+  const usersCount = await prisma.user.count();
   const venuesCount = await prisma.venue.count();
   const eventsCount = await prisma.event.count();
   const seatsCount = await prisma.seat.count();
-  console.log(`Створено ${venuesCount} майданчиків, ${eventsCount} подій, ${seatsCount} місць`);
+  console.log(
+    `Створено ${usersCount} користувачів, ${venuesCount} майданчиків, ${eventsCount} подій, ${seatsCount} місць`,
+  );
 }
 
 main()

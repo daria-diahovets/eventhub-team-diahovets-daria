@@ -389,6 +389,87 @@ paths:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
 
+  /organizer/events:
+    get:
+      operationId: listOrganizerEvents
+      summary: Події поточного організатора (адміністратор бачить усі)
+      description: Потребує заголовок Authorization з роллю organizer або admin.
+      tags: [organizer]
+      responses:
+        "200":
+          description: Список подій
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Event" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createOrganizerEvent
+      summary: Створити подію
+      description: >-
+        organizerId береться з access-токена, а не з тіла запиту.
+        Потребує заголовок Authorization з роллю organizer або admin.
+      tags: [organizer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Подію створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /organizer/events/{eventId}:
+    patch:
+      operationId: updateOrganizerEvent
+      summary: Оновити власну подію
+      description: >-
+        Чужа подія (або подія, якої не існує) повертає 404 - не 403,
+        щоб не підтверджувати факт її існування. Потребує заголовок
+        Authorization з роллю organizer або admin.
+      tags: [organizer]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Подію оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     Event:
@@ -518,6 +599,37 @@ components:
         accessToken: { type: string }
         user:        { $ref: "#/components/schemas/User" }
 
+    CreateEventRequest:
+      type: object
+      required: [title, category, startsAt, venueId, minPriceCents]
+      properties:
+        title:          { type: string, minLength: 1, maxLength: 200 }
+        description:    { type: string, minLength: 1, maxLength: 2000 }
+        category:       { type: string, minLength: 1, maxLength: 50 }
+        imageUrl:       { type: string, format: uri }
+        startsAt:       { type: string, format: date-time }
+        endsAt:         { type: string, format: date-time }
+        venueId:        { type: string, format: uuid }
+        minPriceCents:  { type: integer, minimum: 0 }
+        availableSeats: { type: integer, minimum: 0, default: 0 }
+
+    UpdateEventRequest:
+      type: object
+      description: Усі поля необов'язкові - оновлюються лише надані.
+      properties:
+        title:          { type: string, minLength: 1, maxLength: 200 }
+        description:    { type: string, minLength: 1, maxLength: 2000 }
+        category:       { type: string, minLength: 1, maxLength: 50 }
+        imageUrl:       { type: string, format: uri }
+        startsAt:       { type: string, format: date-time }
+        endsAt:         { type: string, format: date-time }
+        venueId:        { type: string, format: uuid }
+        minPriceCents:  { type: integer, minimum: 0 }
+        availableSeats: { type: integer, minimum: 0 }
+        status:
+          type: string
+          enum: [scheduled, cancelled]
+
     Problem:
       type: object
       description: RFC 9457 Problem Details
@@ -562,6 +674,30 @@ components:
                 detail: >-
                   Замовлення з таким id не існує, або наданий
                   cancellationToken йому не відповідає
+
+    Unauthenticated:
+      description: Відсутній, протермінований або підроблений access-токен
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            unauthenticated:
+              value:
+                type: /errors/unauthenticated
+                title: Необхідна автентифікація
+                status: 401
+
+    Forbidden:
+      description: Автентифіковано, але роль не дозволяє цю дію
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            forbidden:
+              value:
+                type: /errors/forbidden
+                title: Вашій ролі не дозволено цю дію
+                status: 403
 
     InvalidCredentials:
       description: Пошта не зареєстрована або пароль невірний - відповідь однакова в обох випадках

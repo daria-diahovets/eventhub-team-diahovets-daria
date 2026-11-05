@@ -74,3 +74,39 @@ export class InvalidRefreshToken extends DomainError {
     super("Відсутній, протермінований або вже використаний refresh-токен");
   }
 }
+
+export class Forbidden extends DomainError {
+  constructor() {
+    super("Вашій ролі не дозволено цю дію");
+  }
+}
+
+export class InvalidVenue extends DomainError {
+  constructor(readonly venueId: string) {
+    super(`Майданчик ${venueId} не знайдено`);
+  }
+}
+
+export class OAuthNotConfigured extends DomainError {
+  constructor() {
+    super("Вхід через Google не налаштовано на сервері");
+  }
+}
+
+export class OAuthStateMismatch extends DomainError {
+  constructor() {
+    super("Сеанс входу через Google недійсний або протермінований");
+  }
+}
+
+export class OAuthEmailNotVerified extends DomainError {
+  constructor() {
+    super("Google не підтвердив пошту цього акаунта");
+  }
+}
+
+export class AccountExistsWithPassword extends DomainError {
+  constructor() {
+    super("Ця пошта вже зареєстрована з паролем");
+  }
+}

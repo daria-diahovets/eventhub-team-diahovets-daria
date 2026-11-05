@@ -30,13 +30,29 @@ enum Role {
 }
 
 model User {
-  id            String         @id @default(uuid(7)) @db.Uuid
-  email         String         @unique
-  passwordHash  String
-  role          Role           @default(USER)
-  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
-  refreshTokens RefreshToken[]
-  orders        Order[]
+  id              String         @id @default(uuid(7)) @db.Uuid
+  email           String         @unique
+  passwordHash    String?
+  emailVerified   Boolean        @default(false)
+  role            Role           @default(USER)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  refreshTokens   RefreshToken[]
+  orders          Order[]
+  oauthAccounts   OAuthAccount[]
+  organizedEvents Event[]        @relation("OrganizedEvents")
+}
+
+model OAuthAccount {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @db.Uuid
+  provider        String
+  providerSubject String
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -77,14 +93,17 @@ model Event {
   currency       String      @default("UAH") @db.Char(3)
   availableSeats Int         @default(0)
   venueId        String      @db.Uuid
+  organizerId    String?     @db.Uuid
   createdAt      DateTime    @default(now()) @db.Timestamptz(3)
 
-  venue  Venue       @relation(fields: [venueId], references: [id])
-  seats  Seat[]
-  orders Order[]
+  venue     Venue       @relation(fields: [venueId], references: [id])
+  organizer User?       @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: SetNull)
+  seats     Seat[]
+  orders    Order[]
 
   @@index([startsAt, id])
   @@index([venueId])
+  @@index([organizerId])
 }
 
 model Seat {
