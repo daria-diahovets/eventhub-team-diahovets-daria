@@ -14,7 +14,7 @@ interface OpenApiDocument {
   components: {
     schemas: {
       CreateOrderRequest: {
-        properties: { quantity: { minimum?: number; maximum?: number } };
+        properties: { seatIds: { minItems?: number; maxItems?: number } };
       };
     };
   };
@@ -30,9 +30,12 @@ const openapiPath = fileURLToPath(new URL("../openapi.yaml", import.meta.url));
 const doc = parse(readFileSync(openapiPath, "utf8")) as OpenApiDocument;
 
 const limitParam = doc.paths["/events"].get.parameters.find((p) => p.name === "limit");
-const quantityProp = doc.components.schemas.CreateOrderRequest.properties.quantity;
+const seatIdsProp = doc.components.schemas.CreateOrderRequest.properties.seatIds;
 
 const limitSchema = listEventsQuery.shape.limit.removeDefault();
+// seatIds пройшло через .refine() (перевірка дублікатів) - саме обмеження
+// довжини масиву лежить у обгорнутій ZodArray, до якої innerType() повертає.
+const seatIdsSchema = createOrderBody.shape.seatIds.innerType();
 
 const checks: Check[] = [
   {
@@ -46,14 +49,14 @@ const checks: Check[] = [
     zodValue: limitSchema.minValue,
   },
   {
-    name: "CreateOrderRequest.quantity - maximum",
-    specValue: quantityProp.maximum,
-    zodValue: createOrderBody.shape.quantity.maxValue,
+    name: "CreateOrderRequest.seatIds - maxItems",
+    specValue: seatIdsProp.maxItems,
+    zodValue: seatIdsSchema._def.maxLength?.value ?? null,
   },
   {
-    name: "CreateOrderRequest.quantity - minimum",
-    specValue: quantityProp.minimum,
-    zodValue: createOrderBody.shape.quantity.minValue,
+    name: "CreateOrderRequest.seatIds - minItems",
+    specValue: seatIdsProp.minItems,
+    zodValue: seatIdsSchema._def.minLength?.value ?? null,
   },
 ];
 

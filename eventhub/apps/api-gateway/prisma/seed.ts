@@ -111,6 +111,11 @@ async function main(): Promise<void> {
     timeCost: 3,
   });
 
+  // Місця перестворюються повністю (нижче); замовлення посилаються на них
+  // через OrderItem.seatId @unique, тож спершу видаляємо замовлення, а не
+  // навпаки - інакше каскад лишив би замовлення без позицій.
+  const removedOrders = await prisma.order.deleteMany({});
+
   const userIdByEmail = new Map<string, string>();
   for (const u of USERS) {
     // upsert за поштою, а не id: email - реальний унікальний ключ User,
@@ -143,7 +148,8 @@ async function main(): Promise<void> {
   const eventsCount = await prisma.event.count();
   const seatsCount = await prisma.seat.count();
   console.log(
-    `Створено ${usersCount} користувачів, ${venuesCount} майданчиків, ${eventsCount} подій, ${seatsCount} місць`,
+    `Створено ${usersCount} користувачів, ${venuesCount} майданчиків, ${eventsCount} подій, ` +
+      `${seatsCount} місць; видалено ${removedOrders.count} замовлень`,
   );
 }
 

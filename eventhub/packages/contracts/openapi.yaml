@@ -138,57 +138,93 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /orders:
-    post:
-      operationId: createOrder
-      summary: Створити замовлення на квитки
-      description: >-
-        Оплати ще немає (див. домашнє завдання ЛР2): замовлення одразу
-        переходить у статус confirmed, місця резервуються в момент створення.
-      tags: [orders]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrderRequest"
+  /events/{eventId}/seats:
+    get:
+      operationId: listSeats
+      summary: Карта місць події
+      tags: [catalog]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
       responses:
-        "201":
-          description: >-
-            Замовлення створено. cancellationToken повертається лише цього
-            разу - збережіть його, він потрібен для скасування.
+        "200":
+          description: Місця події
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/CreateOrderResponse"
-              examples:
-                default:
-                  value:
-                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    quantity: 2
-                    status: confirmed
-                    totalPrice: { amount: 50000, currency: UAH }
-                    createdAt: "2026-10-03T12:00:00Z"
-                    cancellationToken: 7f9c3b2a-1d4e-4a6b-8c2d-5e6f7a8b9c0d
+              schema: { $ref: "#/components/schemas/SeatMap" }
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /orders:
+    get:
+      operationId: listMyOrders
+      summary: Замовлення поточного користувача
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Список замовлень, найновіші першими
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+    post:
+      operationId: createOrder
+      summary: Створити замовлення й зарезервувати місця
+      description: >-
+        Оплати ще немає (див. тиждень 8): замовлення переходить у статус
+        pending і тримає місця зарезервованими протягом ORDER_HOLD_MINUTES.
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 8, maxLength: 200 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrderRequest" }
+      responses:
+        "200":
+          description: Повтор із тим самим Idempotency-Key - наявне замовлення
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "201":
+          description: Замовлення створено, місця зарезервовано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/SeatsUnavailable"
-        "410":
-          $ref: "#/components/responses/EventGone"
+        "422":
+          description: Ключ ідемпотентності вже використано з іншим тілом запиту
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /orders/{orderId}:
     get:
       operationId: getOrder
       summary: Переглянути замовлення
-      description: >-
-        orderId - непрозоре посилання з підтвердження замовлення. Самого
-        знання orderId достатньо для перегляду; cancellationToken потрібен
-        лише для скасування (крок 8.3 методички, принцип найменших прав).
+      description: Чуже замовлення - 404, не 403 (методичка ЛР6, ADR-0006).
       tags: [orders]
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: orderId
           in: path
@@ -199,17 +235,9 @@ paths:
           description: Замовлення
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Order"
-              examples:
-                default:
-                  value:
-                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    quantity: 2
-                    status: confirmed
-                    totalPrice: { amount: 50000, currency: UAH }
-                    createdAt: "2026-10-03T12:00:00Z"
+              schema: { $ref: "#/components/schemas/Order" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -218,47 +246,36 @@ paths:
       operationId: cancelOrder
       summary: Скасувати замовлення
       description: >-
-        Повторний виклик на вже скасованому замовленні - безпечна (ідемпотентна)
-        операція: повертає 200 із тим самим станом, а не помилку. Скасування,
-        на відміну від створення, не має побічного ефекту, яким можна
-        "нашкодити" повторно.
+        Лише власник і лише зі стану pending. Місця повертаються у free,
+        лічильник availableSeats відновлюється.
       tags: [orders]
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: orderId
           in: path
           required: true
           schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CancelOrderRequest"
       responses:
         "200":
-          description: Замовлення скасовано (або вже було скасоване раніше)
+          description: Замовлення скасовано
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Order"
-              examples:
-                default:
-                  value:
-                    id: 018f2c1e-ffff-7c3d-9e1f-000000000001
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    quantity: 2
-                    status: cancelled
-                    totalPrice: { amount: 50000, currency: UAH }
-                    createdAt: "2026-10-03T12:00:00Z"
-        "400":
-          $ref: "#/components/responses/BadRequest"
+              schema: { $ref: "#/components/schemas/Order" }
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
         "404":
-          description: >-
-            Замовлення не знайдено АБО cancellationToken не збігається.
-            Навмисно той самий код і те саме тіло в обох випадках: якби
-            невірний токен повертав 403, а чужий orderId - 404, зловмисник
-            зміг би перебором дізнатись, які orderId взагалі існують.
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: Замовлення вже не очікує оплати
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                orderState:
+                  value:
+                    type: /errors/order-state
+                    title: Замовлення вже не очікує оплати
+                    status: 409
 
   /reports/revenue:
     get:
@@ -471,6 +488,12 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     Event:
       type: object
@@ -520,43 +543,71 @@ components:
           type: [string, "null"]
           description: Курсор наступної сторінки; null — сторінок більше немає
 
+    Seat:
+      type: object
+      required: [id, rowLabel, number, price, available]
+      properties:
+        id:       { type: string, format: uuid }
+        rowLabel: { type: string }
+        number:   { type: integer, minimum: 1 }
+        price:    { $ref: "#/components/schemas/Money" }
+        available:
+          type: boolean
+          description: >-
+            Чи можна зараз це місце замовити. Внутрішні стани (FREE, HELD,
+            SOLD) назовні не віддаємо - лише "можна/не можна".
+
+    SeatMap:
+      type: object
+      required: [eventId, seats]
+      properties:
+        eventId: { type: string, format: uuid }
+        seats:
+          type: array
+          items: { $ref: "#/components/schemas/Seat" }
+
+    OrderStatus:
+      type: string
+      enum: [PENDING, PAID, CANCELLED, EXPIRED, REFUNDED]
+
+    OrderItem:
+      type: object
+      required: [seatId, rowLabel, number, price]
+      properties:
+        seatId:   { type: string, format: uuid }
+        rowLabel: { type: string }
+        number:   { type: integer }
+        price:    { $ref: "#/components/schemas/Money" }
+
     Order:
       type: object
-      required: [id, eventId, quantity, status, totalPrice, createdAt]
+      required: [id, eventId, status, total, holdExpiresAt, createdAt, items]
       properties:
-        id:        { type: string, format: uuid }
-        eventId:   { type: string, format: uuid }
-        quantity:  { type: integer, minimum: 1 }
-        status:
+        id:         { type: string, format: uuid }
+        eventId:    { type: string, format: uuid }
+        eventTitle: { type: string }
+        status:     { $ref: "#/components/schemas/OrderStatus" }
+        total:      { $ref: "#/components/schemas/Money" }
+        holdExpiresAt:
           type: string
-          enum: [confirmed, cancelled]
-        totalPrice: { $ref: "#/components/schemas/Money" }
-        createdAt:  { type: string, format: date-time }
+          format: date-time
+          description: Момент, до якого місця зарезервовані
+        createdAt: { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
 
     CreateOrderRequest:
       type: object
-      required: [eventId, quantity]
+      required: [eventId, seatIds]
       properties:
-        eventId:  { type: string, format: uuid }
-        quantity: { type: integer, minimum: 1, maximum: 10 }
-
-    CreateOrderResponse:
-      description: >-
-        Order плюс cancellationToken - цей секрет сервер показує лише
-        один раз, у відповіді на створення. GET /orders/{orderId} його
-        більше не повертає.
-      allOf:
-        - $ref: "#/components/schemas/Order"
-        - type: object
-          required: [cancellationToken]
-          properties:
-            cancellationToken: { type: string }
-
-    CancelOrderRequest:
-      type: object
-      required: [cancellationToken]
-      properties:
-        cancellationToken: { type: string }
+        eventId: { type: string, format: uuid }
+        seatIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
 
     EventRevenue:
       type: object
@@ -640,6 +691,10 @@ components:
         status:   { type: integer }
         detail:   { type: string }
         instance: { type: string }
+        seatIds:
+          type: array
+          items: { type: string, format: uuid }
+          description: Лише для /errors/seats-unavailable - які місця вже зайняті.
 
   responses:
     BadRequest:
@@ -713,9 +768,9 @@ components:
 
     SeatsUnavailable:
       description: >-
-        Запитана кількість місць перевищує те, що лишилось вільним на
-        момент запису. Тимчасовий стан: 409, а не 410 - за хвилину хтось
-        може скасувати свою бронь, і такий самий (або менший) запит пройде.
+        Хоча б одне із запитаних місць уже зайняте на момент запису.
+        Тимчасовий стан: 409, а не 410 - за хвилину хтось може скасувати
+        свою бронь, і такий самий запит пройде.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -723,22 +778,6 @@ components:
             seatsUnavailable:
               value:
                 type: /errors/seats-unavailable
-                title: Недостатньо вільних місць
+                title: Місця вже зайняті
                 status: 409
-                detail: "Запитано 5 місць, вільно 2"
-
-    EventGone:
-      description: >-
-        Подію скасовано організатором. На відміну від SeatsUnavailable (409) -
-        це постійний стан: той самий запит ніколи не пройде, повторювати
-        його немає сенсу.
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
-          examples:
-            eventCancelled:
-              value:
-                type: /errors/event-cancelled
-                title: Подію скасовано
-                status: 410
-                detail: "Організатор скасував цю подію, нові замовлення неможливі"
+                seatIds: [018f2c1e-5000-7c3d-9e1f-000000000001]

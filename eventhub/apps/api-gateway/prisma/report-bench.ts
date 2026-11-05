@@ -1,21 +1,17 @@
-import { createHash, randomBytes } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const BENCH_VENUE_ID = "00000000-0000-7000-8000-0000000000b1";
 const BENCH_EVENT_ID = "00000000-0000-7000-8000-0000000000b2";
+const BENCH_USER_ID = "00000000-0000-7000-8000-0000000000b3";
 const BENCH_COUNT = 50_000;
 
-function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
 async function clean(): Promise<void> {
-  await prisma.orderItem.deleteMany({ where: { eventId: BENCH_EVENT_ID } });
   await prisma.order.deleteMany({ where: { eventId: BENCH_EVENT_ID } });
   await prisma.seat.deleteMany({ where: { eventId: BENCH_EVENT_ID } });
   await prisma.event.deleteMany({ where: { id: BENCH_EVENT_ID } });
+  await prisma.user.deleteMany({ where: { id: BENCH_USER_ID } });
   console.log("Тестові замовлення видалено");
 }
 
@@ -24,6 +20,12 @@ async function run(): Promise<void> {
     where: { id: BENCH_VENUE_ID },
     update: {},
     create: { id: BENCH_VENUE_ID, name: "Бенчмарк-майданчик", city: "Бенчмарк" },
+  });
+
+  await prisma.user.upsert({
+    where: { id: BENCH_USER_ID },
+    update: {},
+    create: { id: BENCH_USER_ID, email: "bench@example.com" },
   });
 
   await prisma.event.upsert({
@@ -42,6 +44,7 @@ async function run(): Promise<void> {
 
   const batchSize = 2000;
   let created = 0;
+  const holdExpiresAt = new Date("2027-06-01T00:00:00Z");
 
   while (created < BENCH_COUNT) {
     const size = Math.min(batchSize, BENCH_COUNT - created);
@@ -57,9 +60,12 @@ async function run(): Promise<void> {
     });
 
     const orders = await prisma.order.createManyAndReturn({
-      data: seats.map(() => ({
+      data: seats.map((seat) => ({
+        userId: BENCH_USER_ID,
         eventId: BENCH_EVENT_ID,
-        cancellationTokenHash: hashToken(randomBytes(8).toString("hex")),
+        status: "PAID" as const,
+        totalCents: seat.priceCents,
+        holdExpiresAt,
       })),
     });
 
@@ -67,8 +73,7 @@ async function run(): Promise<void> {
       data: seats.map((seat, i) => ({
         orderId: orders[i].id,
         seatId: seat.id,
-        eventId: BENCH_EVENT_ID,
-        priceCentsAtPurchase: seat.priceCents,
+        priceCents: seat.priceCents,
       })),
     });
 

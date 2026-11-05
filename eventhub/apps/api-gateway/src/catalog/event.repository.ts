@@ -3,7 +3,6 @@ import type { Event as EventRow, Venue as VenueRow } from "@prisma/client";
 import type { Event } from "@eventhub/contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import type { FindParams } from "./catalog.types";
-import { EventCancelled, EventNotFound, SeatsUnavailable } from "../common/problem/domain-errors";
 
 export type EventWithVenue = EventRow & { venue: VenueRow };
 
@@ -71,36 +70,5 @@ export class EventRepository {
       include: { venue: true },
     });
     return row ? toEvent(row) : undefined;
-  }
-
-  async reserveSeats(eventId: string, quantity: number): Promise<Event> {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      include: { venue: true },
-    });
-    if (!event) throw new EventNotFound(eventId);
-    if (event.status === "CANCELLED") throw new EventCancelled(eventId);
-
-    const result = await this.prisma.event.updateMany({
-      where: { id: eventId, availableSeats: { gte: quantity } },
-      data: { availableSeats: { decrement: quantity } },
-    });
-
-    if (result.count === 0) {
-      throw new SeatsUnavailable(eventId, quantity, event.availableSeats);
-    }
-
-    const updated = await this.prisma.event.findUniqueOrThrow({
-      where: { id: eventId },
-      include: { venue: true },
-    });
-    return toEvent(updated);
-  }
-
-  async releaseSeats(eventId: string, quantity: number): Promise<void> {
-    await this.prisma.event.updateMany({
-      where: { id: eventId },
-      data: { availableSeats: { increment: quantity } },
-    });
   }
 }

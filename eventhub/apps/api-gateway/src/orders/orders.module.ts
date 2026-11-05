@@ -1,13 +1,13 @@
 import { Module } from "@nestjs/common";
-import { CatalogModule } from "../catalog/catalog.module";
 import { AuthModule } from "../auth/auth.module";
-import { OrderRepository } from "./order.repository";
+import { ExpiredHoldsSweeper } from "./expired-holds.sweeper";
 import { OrdersController } from "./orders.controller";
+import { OrdersRepository } from "./orders.repository";
 import { OrdersService } from "./orders.service";
 
 @Module({
-  imports: [CatalogModule, AuthModule],
+  imports: [AuthModule],
   controllers: [OrdersController],
-  providers: [OrdersService, OrderRepository],
+  providers: [OrdersService, OrdersRepository, ExpiredHoldsSweeper],
 })
 export class OrdersModule {}

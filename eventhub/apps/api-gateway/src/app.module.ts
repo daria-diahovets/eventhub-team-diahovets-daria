@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
+import { ScheduleModule } from "@nestjs/schedule";
 import { LoggerModule } from "nestjs-pino";
 import { env } from "./config/env";
 import { PrismaModule } from "./prisma/prisma.module";
@@ -34,6 +35,7 @@ import { ProblemFilter } from "./common/problem/problem.filter";
             : { target: "pino-pretty", options: { singleLine: true } },
       },
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     HealthModule,
     CatalogModule,

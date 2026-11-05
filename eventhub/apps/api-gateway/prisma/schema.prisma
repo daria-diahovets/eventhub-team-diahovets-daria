@@ -19,8 +19,11 @@ enum EventStatus {
 }
 
 enum OrderStatus {
-  CONFIRMED
+  PENDING
+  PAID
   CANCELLED
+  EXPIRED
+  REFUNDED
 }
 
 enum Role {
@@ -107,50 +110,50 @@ model Event {
 }
 
 model Seat {
-  id         String     @id @default(uuid(7)) @db.Uuid
-  eventId    String     @db.Uuid
-  rowLabel   String
-  number     Int
-  priceCents Int
-  status     SeatStatus @default(FREE)
+  id            String     @id @default(uuid(7)) @db.Uuid
+  eventId       String     @db.Uuid
+  rowLabel      String
+  number        Int
+  priceCents    Int
+  status        SeatStatus @default(FREE)
+  holdExpiresAt DateTime?  @db.Timestamptz(3)
 
-  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItem OrderItem?
 
   @@unique([eventId, rowLabel, number])
   @@index([eventId, status])
+  @@index([status, holdExpiresAt])
 }
 
 model Order {
-  id                    String      @id @default(uuid(7)) @db.Uuid
-  eventId               String      @db.Uuid
-  userId                String      @db.Uuid
-  status                OrderStatus @default(CONFIRMED)
-  cancellationTokenHash String
-  createdAt             DateTime    @default(now()) @db.Timestamptz(3)
+  id             String      @id @default(uuid(7)) @db.Uuid
+  userId         String      @db.Uuid
+  eventId        String      @db.Uuid
+  status         OrderStatus @default(PENDING)
+  totalCents     Int
+  currency       String      @default("UAH") @db.Char(3)
+  holdExpiresAt  DateTime    @db.Timestamptz(3)
+  idempotencyKey String?     @unique
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
 
-  event Event       @relation(fields: [eventId], references: [id])
-  user  User        @relation(fields: [userId], references: [id])
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   items OrderItem[]
 
-  @@index([eventId])
-  @@index([userId])
+  @@index([status, holdExpiresAt])
+  @@index([userId, createdAt])
 }
 
-/// priceCentsAtPurchase фіксує ціну місця на момент покупки. Seat.priceCents
-/// може згодом змінитися (переоцінка організатором, знижка), а вже оформлене
-/// замовлення має показувати суму, яку клієнт реально сплатив, а не поточну
-/// ціну місця - інакше історія замовлень розійдеться з реальними транзакціями.
 model OrderItem {
-  id                   String @id @default(uuid(7)) @db.Uuid
-  orderId              String @db.Uuid
-  seatId               String @db.Uuid
-  eventId              String @db.Uuid
-  priceCentsAtPurchase Int
+  id         String @id @default(uuid(7)) @db.Uuid
+  orderId    String @db.Uuid
+  seatId     String @unique @db.Uuid
+  priceCents Int
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  seat  Seat  @relation(fields: [seatId], references: [id])
+  seat  Seat  @relation(fields: [seatId], references: [id], onDelete: Cascade)
 
-  @@unique([seatId, orderId])
-  @@index([eventId, orderId])
+  @@index([orderId])
 }

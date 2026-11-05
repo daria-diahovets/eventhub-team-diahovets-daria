@@ -25,7 +25,13 @@ export type EventIdParam = z.infer<typeof eventIdParam>;
 
 export const createOrderBody = z.object({
   eventId: uuidLike,
-  quantity: z.number().int().min(1).max(10),
+  seatIds: z
+    .array(uuidLike)
+    .min(1, "Оберіть хоча б одне місце")
+    .max(10, "Не більше десяти місць за раз")
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "Одне й те саме місце вказано двічі",
+    }),
 });
 export type CreateOrderBody = z.infer<typeof createOrderBody>;
 
@@ -34,10 +40,7 @@ export const orderIdParam = z.object({
 });
 export type OrderIdParam = z.infer<typeof orderIdParam>;
 
-export const cancelOrderBody = z.object({
-  cancellationToken: z.string().min(1),
-});
-export type CancelOrderBody = z.infer<typeof cancelOrderBody>;
+export const idempotencyKey = z.string().trim().min(8).max(200);
 
 const email = z.string().trim().toLowerCase().email().max(254);
 

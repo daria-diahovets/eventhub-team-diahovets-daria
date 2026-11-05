@@ -17,25 +17,27 @@ export class InvalidCursor extends DomainError {
   }
 }
 
-export class EventCancelled extends DomainError {
-  constructor(readonly eventId: string) {
-    super(`Подію ${eventId} скасовано`);
-  }
-}
-
 export class SeatsUnavailable extends DomainError {
-  constructor(
-    readonly eventId: string,
-    readonly requested: number,
-    readonly available: number,
-  ) {
-    super(`Запитано ${requested} місць, вільно ${available}`);
+  constructor(readonly seatIds: string[]) {
+    super("Хтось випередив вас: ці місця вже зайняті");
   }
 }
 
 export class OrderNotFound extends DomainError {
   constructor(readonly orderId: string) {
     super(`Замовлення ${orderId} не знайдено`);
+  }
+}
+
+export class OrderStateConflict extends DomainError {
+  constructor(readonly current: string) {
+    super("Замовлення вже не очікує оплати");
+  }
+}
+
+export class IdempotencyKeyReused extends DomainError {
+  constructor() {
+    super("Цей ключ ідемпотентності вже використано з іншим запитом");
   }
 }
 
